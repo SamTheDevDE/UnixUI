@@ -1,7 +1,7 @@
 -- ComputerCraft/Tweaked installer: downloads files listed in manifest.json
 -- Requirements: HTTP enabled in ComputerCraft: Tweaked config.
 
-local BASE_URL = "https://github.samthedev.de/"
+local BASE_URL = "https://UnixUI.samthedev.de/"
 local MANIFEST_URL = BASE_URL .. "/manifest.json"
 local TARGET_DIR = "/" -- change if you want a subfolder
 
