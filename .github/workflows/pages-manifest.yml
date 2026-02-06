@@ -1,0 +1,93 @@
+name: Build and Deploy Pages with Manifest
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Generate site and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p site/files
+          if [ -d src ]; then
+            find src -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY##*/}"
+          baseUrl="https://${owner}.github.io/${repo}"
+
+          echo "{" > site/manifest.json
+          echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"," >> site/manifest.json
+          echo "  \"baseUrl\": \"${baseUrl}\"," >> site/manifest.json
+          echo "  \"files\": [" >> site/manifest.json
+
+          first=1
+          while IFS= read -r -d '' f; do
+            size=$(stat -c%s "$f")
+            checksum=$(sha256sum "$f" | cut -d ' ' -f1)
+            url="${baseUrl}/files/${f}"
+            entry=$(jq -nc --arg path "$f" --arg url "$url" --arg checksum "$checksum" --argjson size "$size" '{path: $path, url: $url, size: $size, sha256: $checksum}')
+            if [ "$first" -eq 1 ]; then
+              echo "    ${entry}" >> site/manifest.json
+              first=0
+            else
+              echo ",   ${entry}" >> site/manifest.json
+            fi
+          done < <(find src -type f -print0)
+
+          echo "  ]" >> site/manifest.json
+          echo "}" >> site/manifest.json
+
+          # Minimal index
+          cat > site/index.html << 'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>LTCCT-Template Files</title>
+          <h1>LTCCT-Template</h1>
+          <p>Manifest: <a href="manifest.json">manifest.json</a></p>
+          <p>Files are served under <code>/files/</code> with repo-relative paths.</p>
+          HTML
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
