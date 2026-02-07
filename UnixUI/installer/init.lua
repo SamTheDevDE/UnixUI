@@ -142,12 +142,22 @@ local function createInstaller()
     
     -- Fetch from URL
     function Installer.fetch(url)
+        if not http then
+            return nil, "HTTP API not available"
+        end
+        
         local res = http.get(url)
         if not res then
-            return nil, "HTTP GET failed"
+            return nil, "HTTP request failed for: " .. url
         end
+        
         local data = res.readAll()
         res.close()
+        
+        if not data or #data == 0 then
+            return nil, "Empty response from server"
+        end
+        
         return data
     end
     
@@ -175,25 +185,39 @@ local function createInstaller()
         
         local manifestData, err = Installer.fetch(MANIFEST_URL)
         if not manifestData then
-            UI.error("ERROR", "Could not fetch manifest!\n\n" .. err)
+            UI.error("ERROR", "Could not fetch manifest!\n\n" .. (err or "Unknown error"))
             return nil
         end
         
         print("✓ Downloaded " .. #manifestData .. " bytes")
         
+        -- Check if textutils.jsonDecode exists
+        if not textutils or not textutils.jsonDecode then
+            UI.error("ERROR", "textutils.jsonDecode not available!\n\nThis may indicate a corrupted ComputerCraft installation")
+            return nil
+        end
+        
         local ok, result = pcall(textutils.jsonDecode, manifestData)
         if not ok then
             print("✗ Failed to parse JSON")
             print("Error: " .. tostring(result))
+            if #manifestData < 500 then
+                print("Data: " .. manifestData)
+            else
+                print("Data (first 200 chars): " .. manifestData:sub(1, 200) .. "...")
+            end
             print("")
-            print("Raw data preview:")
-            print(manifestData:sub(1, 200))
-            print("")
+            sleep(2)
             UI.error("ERROR", "Invalid manifest JSON!\n\nError: " .. tostring(result))
             return nil
         end
         
-        if not result or not result.packages then
+        if not result or type(result) ~= "table" then
+            UI.error("ERROR", "Manifest is not valid JSON!")
+            return nil
+        end
+        
+        if not result.packages or type(result.packages) ~= "table" then
             UI.error("ERROR", "Manifest missing 'packages' field!")
             return nil
         end
