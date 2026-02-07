@@ -28,8 +28,48 @@ local function createInstaller()
     Installer.manifestUrl = MANIFEST_URL
     Installer.tempDir = TEMP_DIR
     
+    -- Detect and setup display
+    local currentDisplay = term.current()
+    local monitorSide = nil
+    local terminalDisplay = term.current()
+    local monitorDisplay = nil
+    
+    -- Try to find a monitor
+    for _, side in ipairs({"top", "bottom", "left", "right", "front", "back"}) do
+        if peripheral.isPresent(side) and peripheral.getType(side) == "monitor" then
+            monitorSide = side
+            monitorDisplay = peripheral.wrap(side)
+            currentDisplay = monitorDisplay
+            break
+        end
+    end
+    
+    -- Redirect to monitor if found
+    if monitorSide then
+        term.redirect(currentDisplay)
+    end
+    
     -- Load UI
     local UI = {}
+    UI.currentDisplay = currentDisplay
+    UI.monitorSide = monitorSide
+    UI.terminalDisplay = terminalDisplay
+    UI.monitorDisplay = monitorDisplay
+    
+    -- Switch between displays
+    function UI.useMonitor()
+        if UI.monitorDisplay then
+            term.redirect(UI.monitorDisplay)
+        end
+    end
+    
+    function UI.useTerminal()
+        term.redirect(UI.terminalDisplay)
+    end
+    
+    function UI.usePrimary()
+        term.redirect(UI.currentDisplay)
+    end
     
     function UI.clearScreen()
         term.clear()
@@ -104,21 +144,35 @@ local function createInstaller()
             print("Use UP/DOWN arrows to select, ENTER to confirm, or click")
             UI.resetColor()
             
-            local event, key, x, y = os.pullEvent()
-            
-            if event == "key" then
-                if key == keys.up then
-                    selected = selected > 1 and selected - 1 or #options
-                elseif key == keys.down then
-                    selected = selected < #options and selected + 1 or 1
-                elseif key == keys.enter then
-                    return options[selected]
-                end
-            elseif event == "mouse_click" then
-                -- Handle mouse clicks
-                if optionLines[y] then
-                    selected = optionLines[y]
-                    return options[selected]
+            while true do
+                local event = {os.pullEvent()}
+                local eventType = event[1]
+                
+                if eventType == "key" then
+                    local key = event[2]
+                    if key == keys.up then
+                        selected = selected > 1 and selected - 1 or #options
+                        break
+                    elseif key == keys.down then
+                        selected = selected < #options and selected + 1 or 1
+                        break
+                    elseif key == keys.enter then
+                        return options[selected]
+                    end
+                elseif eventType == "mouse_click" then
+                    -- Terminal click
+                    local button, x, y = event[2], event[3], event[4]
+                    if optionLines[y] then
+                        selected = optionLines[y]
+                        return options[selected]
+                    end
+                elseif eventType == "monitor_touch" then
+                    -- Monitor click
+                    local side, x, y = event[2], event[3], event[4]
+                    if side == UI.monitorSide and optionLines[y] then
+                        selected = optionLines[y]
+                        return options[selected]
+                    end
                 end
             end
         end
@@ -136,19 +190,33 @@ local function createInstaller()
         print("[YES - CONTINUE]  [NO - CANCEL]")
         
         while true do
-            local event, key, x, y = os.pullEvent()
-            if event == "key" then
+            local event = {os.pullEvent()}
+            local eventType = event[1]
+            
+            if eventType == "key" then
+                local key = event[2]
                 if key == keys.enter then
                     return true
                 elseif key == keys.escape then
                     return false
                 end
-            elseif event == "mouse_click" then
-                -- Simple click detection: left side is YES, right side is NO
+            elseif eventType == "mouse_click" then
+                -- Terminal click
+                local button, x, y = event[2], event[3], event[4]
                 if x <= 20 then
                     return true
                 elseif x > 20 then
                     return false
+                end
+            elseif eventType == "monitor_touch" then
+                -- Monitor click
+                local side, x, y = event[2], event[3], event[4]
+                if side == UI.monitorSide then
+                    if x <= 20 then
+                        return true
+                    elseif x > 20 then
+                        return false
+                    end
                 end
             end
         end
@@ -343,13 +411,28 @@ local function createInstaller()
         local success = 0
         local failed = 0
         
+        -- Show installation on monitor
+        UI.usePrimary()
         UI.header("Installing " .. pkg.name)
         print("")
+        
+        -- If we have a monitor, show status on terminal too
+        if UI.monitorDisplay then
+            UI.useTerminal()
+            term.clear()
+            term.setCursorPos(1, 1)
+            term.setTextColor(colors.yellow)
+            print("Installation in progress...")
+            print("Check monitor for details")
+            term.setTextColor(colors.white)
+            UI.usePrimary()
+        end
         
         for i, filePath in ipairs(files) do
             local url = BASE_URL .. filePath
             local targetPath = filePath
             
+            UI.usePrimary()
             print("[" .. i .. "/" .. total .. "] " .. filePath)
             
             local data, err = Installer.fetch(url)
@@ -371,8 +454,18 @@ local function createInstaller()
                 UI.resetColor()
                 failed = failed + 1
             end
+            
+            -- Update terminal status
+            if UI.monitorDisplay then
+                UI.useTerminal()
+                term.setCursorPos(1, 3)
+                term.clearLine()
+                print("Progress: " .. i .. "/" .. total .. " files")
+                UI.usePrimary()
+            end
         end
         
+        UI.usePrimary()
         print("")
         print("Installation Summary:")
         UI.setColor(colors.lime)
@@ -382,6 +475,18 @@ local function createInstaller()
             UI.setColor(colors.red)
             print("Failed:  " .. failed)
             UI.resetColor()
+        end
+        
+        -- Clear terminal status
+        if UI.monitorDisplay then
+            UI.useTerminal()
+            term.clear()
+            term.setCursorPos(1, 1)
+            term.setTextColor(colors.lime)
+            print("Installation complete!")
+            print("Check monitor for details")
+            term.setTextColor(colors.white)
+            UI.usePrimary()
         end
         
         return failed == 0
@@ -404,6 +509,17 @@ local function createInstaller()
         if not http then
             UI.error("ERROR", "HTTP API not available!\n\nPlease enable HTTP in your ComputerCraft config")
             return
+        end
+        
+        -- Show display info
+        if UI.monitorDisplay then
+            UI.usePrimary()
+            UI.header("UnixUI Installer", "Multi-Display Mode")
+            print("Monitor detected on: " .. UI.monitorSide)
+            print("Using monitor for main display")
+            print("Terminal will show status updates")
+            print("")
+            sleep(2)
         end
         
         local manifest = Installer.loadManifest()
@@ -478,6 +594,9 @@ end
 
 -- Main entry point
 local function main()
+    -- Store original terminal
+    local originalTerm = term.current()
+    
     -- Ensure .temp directory exists
     if not fs.exists(TEMP_DIR) then
         fs.makeDir(TEMP_DIR)
@@ -492,6 +611,11 @@ local function main()
     end
     
     installer.run()
+    
+    -- Restore terminal
+    term.redirect(originalTerm)
+    term.clear()
+    term.setCursorPos(1, 1)
 end
 
 main()
