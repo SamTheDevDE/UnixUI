@@ -1,52 +1,25 @@
--- ComputerCraft/Tweaked installer: downloads files listed in manifest.json
--- Requirements: HTTP enabled in ComputerCraft: Tweaked config.
+-- UnixUI Framework Installer Launcher
+-- This file loads the actual installer from the installer package
 
-local BASE_URL = "https://UnixUI.samthedev.de/"
-local MANIFEST_URL = BASE_URL .. "/manifest.json"
-local TARGET_DIR = "/" -- change if you want a subfolder
+-- Try to load the actual installer
+local ok, err = pcall(function()
+    dofile("UnixUI/installer/init.lua")
+end)
 
-local function log(msg)
-  print(msg)
+if not ok then
+    term.clear()
+    term.setCursorPos(1, 1)
+    term.setTextColor(colors.red)
+    print("ERROR")
+    print("")
+    print("An error occurred in the installer:")
+    print(err)
+    print("")
+    print("Please delete the .temp folder and run the installer again")
+    print("")
+    print("If the problem persists, ensure:")
+    print("- HTTP is enabled in ComputerCraft config")
+    print("- You have internet access")
+    print("- The installer files are present")
+    term.setTextColor(colors.white)
 end
-
-local function fetch(url)
-  local res = http.get(url)
-  if not res then
-    error("HTTP GET failed: " .. url)
-  end
-  local data = res.readAll()
-  res.close()
-  return data
-end
-
-local function writeFile(path, data)
-  local dir = fs.getDir(path)
-  if dir and dir ~= "" then
-    fs.makeDir(dir)
-  end
-  local h = assert(fs.open(path, "wb"))
-  h.write(data)
-  h.close()
-end
-
-local function install()
-  log("Fetching manifest: " .. MANIFEST_URL)
-  local manifestJson = fetch(MANIFEST_URL)
-  local manifest = textutils.unserializeJSON(manifestJson)
-  if not manifest or not manifest.files then
-    error("Invalid manifest.json")
-  end
-
-  for _, item in ipairs(manifest.files) do
-    local relPath = item.path
-    local url = item.url or (BASE_URL .. "/files/" .. relPath)
-    local targetPath = fs.combine(TARGET_DIR, relPath)
-    log("Downloading " .. relPath .. " from " .. url)
-    local data = fetch(url)
-    writeFile(targetPath, data)
-  end
-
-  log("Install complete.")
-end
-
-pcall(install)
