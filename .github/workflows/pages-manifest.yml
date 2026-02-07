@@ -32,49 +32,205 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p site/files
-          if [ -d src ]; then
-            find src -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f}"
+          
+          # Copy all files from UnixUI to site
+          if [ -d UnixUI/installer ]; then
+            find UnixUI/installer -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
           fi
-
+          
+          if [ -d UnixUI/core ]; then
+            find UnixUI/core -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          if [ -d UnixUI/graphics ]; then
+            find UnixUI/graphics -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          if [ -d UnixUI/components ]; then
+            find UnixUI/components -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          if [ -d UnixUI/utils ]; then
+            find UnixUI/utils -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          if [ -d UnixUI/demos ]; then
+            find UnixUI/demos -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          if [ -d UnixUI/docs ]; then
+            find UnixUI/docs -type f -print0 | while IFS= read -r -d '' f; do
+              dest="site/files/${f#UnixUI/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+            done
+          fi
+          
+          # Copy init.lua from UnixUI root
+          if [ -f UnixUI/init.lua ]; then
+            cp UnixUI/init.lua site/files/init.lua
+          fi
+          
+          # Copy install.lua from project root
+          if [ -f install.lua ]; then
+            cp install.lua site/files/install.lua
+          fi
+          
           owner="${GITHUB_REPOSITORY%%/*}"
           repo="${GITHUB_REPOSITORY##*/}"
           baseUrl="https://${owner}.github.io/${repo}"
-
-          echo "{" > site/manifest.json
-          echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"," >> site/manifest.json
-          echo "  \"baseUrl\": \"${baseUrl}\"," >> site/manifest.json
-          echo "  \"files\": [" >> site/manifest.json
-
-          first=1
-          while IFS= read -r -d '' f; do
-            size=$(stat -c%s "$f")
-            checksum=$(sha256sum "$f" | cut -d ' ' -f1)
-            url="${baseUrl}/files/${f}"
-            entry=$(jq -nc --arg path "$f" --arg url "$url" --arg checksum "$checksum" --argjson size "$size" '{path: $path, url: $url, size: $size, sha256: $checksum}')
-            if [ "$first" -eq 1 ]; then
-              echo "    ${entry}" >> site/manifest.json
-              first=0
-            else
-              echo ",   ${entry}" >> site/manifest.json
-            fi
-          done < <(find src -type f -print0)
-
-          echo "  ]" >> site/manifest.json
-          echo "}" >> site/manifest.json
-
-          # Minimal index
+          
+          # Generate structured manifest
+          cat > site/manifest.json << 'EOF'
+          {
+            "name": "UnixUI",
+            "version": "0.2.0",
+            "description": "A lightweight, modular graphics framework for ComputerCraft: Tweaked",
+            "repository": "https://github.com/SamTheDevDE/UnixUI",
+            "branch": "dev",
+            "baseUrl": "https://samthedevde.github.io/UnixUI/",
+            "packages": {
+              "installer": {
+                "name": "Installer",
+                "description": "Installation and update utility",
+                "files": [
+                  "installer/init.lua",
+                  "installer/manifest.lua",
+                  "installer/ui.lua"
+                ],
+                "dependencies": []
+              },
+              "core": {
+                "name": "Core",
+                "description": "Core rendering system (Buffer, Renderer)",
+                "files": [
+                  "core/Buffer.lua",
+                  "core/Renderer.lua"
+                ],
+                "dependencies": []
+              },
+              "graphics": {
+                "name": "Graphics",
+                "description": "Graphics primitives (Shapes, Text)",
+                "files": [
+                  "graphics/Shapes.lua",
+                  "graphics/Text.lua"
+                ],
+                "dependencies": ["core"]
+              },
+              "components": {
+                "name": "Components",
+                "description": "UI components (Button, Panel)",
+                "files": [
+                  "components/Button.lua",
+                  "components/Panel.lua"
+                ],
+                "dependencies": ["core", "graphics"]
+              },
+              "utils": {
+                "name": "Utilities",
+                "description": "Helper utilities (Device, Colors, Events, Input, Layout, Screen)",
+                "files": [
+                  "utils/Device.lua",
+                  "utils/Colors.lua",
+                  "utils/Events.lua",
+                  "utils/Input.lua",
+                  "utils/Layout.lua",
+                  "utils/Screen.lua"
+                ],
+                "dependencies": []
+              },
+              "demos": {
+                "name": "Demos",
+                "description": "Demo programs and examples",
+                "files": [
+                  "demos/main.lua",
+                  "demos/example.lua"
+                ],
+                "dependencies": ["core", "graphics", "components", "utils"]
+              },
+              "docs": {
+                "name": "Documentation",
+                "description": "Framework documentation and guides",
+                "files": [
+                  "docs/GUIDE.md",
+                  "docs/STRUCTURE.md",
+                  "docs/README.md"
+                ],
+                "dependencies": []
+              },
+              "full": {
+                "name": "Full Package",
+                "description": "Complete installation with all packages",
+                "files": [
+                  "core/Buffer.lua",
+                  "core/Renderer.lua",
+                  "graphics/Shapes.lua",
+                  "graphics/Text.lua",
+                  "components/Button.lua",
+                  "components/Panel.lua",
+                  "utils/Device.lua",
+                  "utils/Colors.lua",
+                  "utils/Events.lua",
+                  "utils/Input.lua",
+                  "utils/Layout.lua",
+                  "utils/Screen.lua",
+                  "demos/main.lua",
+                  "demos/example.lua",
+                  "docs/GUIDE.md",
+                  "docs/STRUCTURE.md",
+                  "docs/README.md",
+                  "init.lua"
+                ],
+                "dependencies": []
+              }
+            }
+          }
+          EOF
+          
+          # Create index page
           cat > site/index.html << 'HTML'
           <!doctype html>
           <meta charset="utf-8">
-          <title>LTCCT-Template Files</title>
-          <h1>LTCCT-Template</h1>
-          <p>Manifest: <a href="manifest.json">manifest.json</a></p>
-          <p>Files are served under <code>/files/</code> with repo-relative paths.</p>
-          HTML
+          <title>UnixUI - ComputerCraft Graphics Framework</title>
+          <style>
+            body { font-family: monospace; margin: 20px; }
+            code { background: #f4f4f4; padding: 2px 6px; }
+          </style>
+          <h1>UnixUI</h1>
+          <p>A lightweight, modular graphics framework for ComputerCraft: Tweaked</p>
+          <h2>Resources</h2>
+          <ul>
+            <li><a href="manifest.json">Manifest (manifest.json)</a></li>
+            <li><a href="https://github.com/SamTheDevDE/UnixUI">GitHub Repository</a></li>
+          </ul>
+          <h2>Installation</h2>
+          <p>Download the installer and run it in ComputerCraft:</p>
+          <pre>wget https://samthedevde.github.io/UnixUI/install.lua install.lua
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
