@@ -54,9 +54,9 @@ local function createInstaller()
         UI.clearScreen()
         UI.setColor(colors.blue)
         print("=" .. string.rep("=", 38) .. "=")
-        print("║" .. UI.centerText(title, 38) .. "║")
+        print("|" .. UI.centerText(title, 38) .. "|")
         if subtitle then
-            print("║" .. UI.centerText(subtitle, 38) .. "║")
+            print("|" .. UI.centerText(subtitle, 38) .. "|")
         end
         print("=" .. string.rep("=", 38) .. "=")
         UI.resetColor()
@@ -70,38 +70,56 @@ local function createInstaller()
             UI.header(title)
             print("")
             
+            local optionLines = {} -- Track which lines have clickable options
+            local lineNum = 5 -- Start after header
+            
             for i, opt in ipairs(options) do
                 if i == selected then
                     UI.setColor(colors.black)
                     term.setBackgroundColor(colors.cyan)
-                    print("▶ " .. opt.text)
+                    print("> " .. opt.text)
+                    optionLines[lineNum] = i
                     UI.resetColor()
                     term.setBackgroundColor(colors.black)
+                    lineNum = lineNum + 1
                     if opt.desc then
                         print("  " .. opt.desc)
+                        lineNum = lineNum + 1
                     end
                 else
                     UI.setColor(colors.white)
                     print("  " .. opt.text)
+                    optionLines[lineNum] = i
+                    lineNum = lineNum + 1
                     if opt.desc then
                         print("  " .. opt.desc)
+                        lineNum = lineNum + 1
                     end
                 end
                 print("")
+                lineNum = lineNum + 1
             end
             
             UI.setColor(colors.gray)
-            print("Use UP/DOWN arrows to select, ENTER to confirm")
+            print("Use UP/DOWN arrows to select, ENTER to confirm, or click")
             UI.resetColor()
             
-            local event, key = os.pullEvent("key")
+            local event, key, x, y = os.pullEvent()
             
-            if key == keys.up then
-                selected = selected > 1 and selected - 1 or #options
-            elseif key == keys.down then
-                selected = selected < #options and selected + 1 or 1
-            elseif key == keys.enter then
-                return options[selected]
+            if event == "key" then
+                if key == keys.up then
+                    selected = selected > 1 and selected - 1 or #options
+                elseif key == keys.down then
+                    selected = selected < #options and selected + 1 or 1
+                elseif key == keys.enter then
+                    return options[selected]
+                end
+            elseif event == "mouse_click" then
+                -- Handle mouse clicks
+                if optionLines[y] then
+                    selected = optionLines[y]
+                    return options[selected]
+                end
             end
         end
     end
@@ -113,13 +131,25 @@ local function createInstaller()
         UI.resetColor()
         print("")
         print("Press ENTER to continue or ESC to cancel")
+        print("(or click YES/NO)")
+        print("")
+        print("[YES - CONTINUE]  [NO - CANCEL]")
         
         while true do
-            local event, key = os.pullEvent("key")
-            if key == keys.enter then
-                return true
-            elseif key == keys.escape then
-                return false
+            local event, key, x, y = os.pullEvent()
+            if event == "key" then
+                if key == keys.enter then
+                    return true
+                elseif key == keys.escape then
+                    return false
+                end
+            elseif event == "mouse_click" then
+                -- Simple click detection: left side is YES, right side is NO
+                if x <= 20 then
+                    return true
+                elseif x > 20 then
+                    return false
+                end
             end
         end
     end
@@ -128,14 +158,14 @@ local function createInstaller()
         UI.clearScreen()
         UI.setColor(colors.red)
         print("!" .. string.rep("!", 38) .. "!")
-        print("║" .. UI.centerText(title, 38) .. "║")
+        print("|" .. UI.centerText(title, 38) .. "|")
         print("!" .. string.rep("!", 38) .. "!")
         UI.resetColor()
         print("")
         print(message)
         print("")
-        print("Press any key to exit...")
-        os.pullEvent("key")
+        print("Press any key or click to exit...")
+        os.pullEvent()
     end
     
     Installer.UI = UI
@@ -273,11 +303,11 @@ local function createInstaller()
             return nil
         end
         
-        print("✓ Downloaded " .. #manifestData .. " bytes")
+        print("[OK] Downloaded " .. #manifestData .. " bytes")
         
         local ok, result = pcall(parseJSON, manifestData)
         if not ok or not result then
-            print("✗ Failed to parse manifest")
+            print("[FAIL] Failed to parse manifest")
             print("Error: " .. tostring(result))
             print("")
             sleep(2)
@@ -291,7 +321,7 @@ local function createInstaller()
         end
         
         UI.setColor(colors.lime)
-        print("✓ Manifest loaded successfully")
+        print("[OK] Manifest loaded successfully")
         print("  Version: " .. (result.version or "unknown"))
         print("  Packages: " .. (result.packages and "yes" or "no"))
         UI.resetColor()
@@ -326,18 +356,18 @@ local function createInstaller()
             if data then
                 if Installer.writeFile(targetPath, data) then
                     UI.setColor(colors.lime)
-                    print("  ✓ Success")
+                    print("  [OK] Success")
                     UI.resetColor()
                     success = success + 1
                 else
                     UI.setColor(colors.red)
-                    print("  ✗ Write failed")
+                    print("  [FAIL] Write failed")
                     UI.resetColor()
                     failed = failed + 1
                 end
             else
                 UI.setColor(colors.red)
-                print("  ✗ " .. err)
+                print("  [FAIL] " .. err)
                 UI.resetColor()
                 failed = failed + 1
             end
