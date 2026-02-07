@@ -90,15 +90,27 @@ local function createInstaller()
         return string.rep(" ", padding) .. text .. string.rep(" ", width - padding - #text)
     end
     
+    function UI.line(char, width)
+        return string.rep(char or "-", width or 40)
+    end
+    
+    function UI.progressBar(current, total, width)
+        width = width or 30
+        local filled = math.floor((current / total) * width)
+        local empty = width - filled
+        return "[" .. string.rep("=", filled) .. string.rep("-", empty) .. "] " .. current .. "/" .. total
+    end
+    
     function UI.header(title, subtitle)
         UI.clearScreen()
         UI.setColor(colors.blue)
-        print("=" .. string.rep("=", 38) .. "=")
-        print("|" .. UI.centerText(title, 38) .. "|")
+        print("")
+        print("  " .. UI.line("=", 36))
+        print("  " .. UI.centerText(title, 36))
         if subtitle then
-            print("|" .. UI.centerText(subtitle, 38) .. "|")
+            print("  " .. UI.centerText(subtitle, 36))
         end
-        print("=" .. string.rep("=", 38) .. "=")
+        print("  " .. UI.line("=", 36))
         UI.resetColor()
         print("")
     end
@@ -108,40 +120,40 @@ local function createInstaller()
         
         while true do
             UI.header(title)
-            print("")
             
-            local optionLines = {} -- Track which lines have clickable options
-            local lineNum = 5 -- Start after header
+            local optionLines = {}
+            local lineNum = 6
             
             for i, opt in ipairs(options) do
-                if i == selected then
+                local isSelected = (i == selected)
+                
+                if isSelected then
                     UI.setColor(colors.black)
                     term.setBackgroundColor(colors.cyan)
-                    print("> " .. opt.text)
+                    print("  > " .. opt.text)
                     optionLines[lineNum] = i
-                    UI.resetColor()
-                    term.setBackgroundColor(colors.black)
-                    lineNum = lineNum + 1
-                    if opt.desc then
-                        print("  " .. opt.desc)
-                        lineNum = lineNum + 1
-                    end
                 else
                     UI.setColor(colors.white)
-                    print("  " .. opt.text)
+                    print("    " .. opt.text)
                     optionLines[lineNum] = i
-                    lineNum = lineNum + 1
-                    if opt.desc then
-                        print("  " .. opt.desc)
-                        lineNum = lineNum + 1
-                    end
                 end
+                
+                lineNum = lineNum + 1
+                
+                if opt.desc then
+                    term.setBackgroundColor(colors.black)
+                    UI.setColor(colors.gray)
+                    print("      " .. opt.desc)
+                    UI.resetColor()
+                    lineNum = lineNum + 1
+                end
+                
                 print("")
                 lineNum = lineNum + 1
             end
             
             UI.setColor(colors.gray)
-            print("Use UP/DOWN arrows to select, ENTER to confirm, or click")
+            print("  UP/DOWN: Navigate | ENTER: Select | Click: Choose")
             UI.resetColor()
             
             while true do
@@ -160,18 +172,14 @@ local function createInstaller()
                         return options[selected]
                     end
                 elseif eventType == "mouse_click" then
-                    -- Terminal click
                     local button, x, y = event[2], event[3], event[4]
                     if optionLines[y] then
-                        selected = optionLines[y]
-                        return options[selected]
+                        return options[optionLines[y]]
                     end
                 elseif eventType == "monitor_touch" then
-                    -- Monitor click
                     local side, x, y = event[2], event[3], event[4]
                     if side == UI.monitorSide and optionLines[y] then
-                        selected = optionLines[y]
-                        return options[selected]
+                        return options[optionLines[y]]
                     end
                 end
             end
@@ -180,14 +188,15 @@ local function createInstaller()
     
     function UI.confirm(message)
         UI.clearScreen()
+        print("")
         UI.setColor(colors.yellow)
-        print(message)
+        print("  " .. UI.centerText(message, 36))
         UI.resetColor()
         print("")
-        print("Press ENTER to continue or ESC to cancel")
-        print("(or click YES/NO)")
+        print("  Press ENTER to continue")
+        print("  Press ESC to cancel")
         print("")
-        print("[YES - CONTINUE]  [NO - CANCEL]")
+        print("  [YES - CONTINUE]       [NO - CANCEL]")
         
         while true do
             local event = {os.pullEvent()}
@@ -201,20 +210,18 @@ local function createInstaller()
                     return false
                 end
             elseif eventType == "mouse_click" then
-                -- Terminal click
                 local button, x, y = event[2], event[3], event[4]
-                if x <= 20 then
+                if x <= 25 then
                     return true
-                elseif x > 20 then
+                else
                     return false
                 end
             elseif eventType == "monitor_touch" then
-                -- Monitor click
                 local side, x, y = event[2], event[3], event[4]
                 if side == UI.monitorSide then
-                    if x <= 20 then
+                    if x <= 25 then
                         return true
-                    elseif x > 20 then
+                    else
                         return false
                     end
                 end
@@ -222,17 +229,55 @@ local function createInstaller()
         end
     end
     
+    function UI.installProgress(packageName, currentFile, totalFiles, fileName)
+        UI.clearScreen()
+        print("")
+        UI.setColor(colors.lime)
+        print("  Installing " .. packageName .. "...")
+        UI.resetColor()
+        print("")
+        print("  " .. UI.progressBar(currentFile, totalFiles, 32))
+        print("")
+        UI.setColor(colors.gray)
+        print("  File: " .. fileName)
+        UI.resetColor()
+    end
+    
+    function UI.installComplete(packageName, success, failed)
+        UI.clearScreen()
+        print("")
+        UI.setColor(colors.cyan)
+        print("  " .. UI.centerText("Installation Complete", 36))
+        print("  " .. UI.line("-", 36))
+        UI.resetColor()
+        print("")
+        print("  Package: " .. packageName)
+        print("")
+        UI.setColor(colors.lime)
+        print("  [OK] " .. success .. " files installed")
+        UI.resetColor()
+        if failed > 0 then
+            UI.setColor(colors.red)
+            print("  [FAIL] " .. failed .. " files failed")
+            UI.resetColor()
+        end
+        print("")
+        print("  Press any key to continue...")
+        os.pullEvent()
+    end
+    
     function UI.error(title, message)
         UI.clearScreen()
+        print("")
         UI.setColor(colors.red)
-        print("!" .. string.rep("!", 38) .. "!")
-        print("|" .. UI.centerText(title, 38) .. "|")
-        print("!" .. string.rep("!", 38) .. "!")
+        print("  " .. UI.line("!", 36))
+        print("  " .. UI.centerText(title, 36))
+        print("  " .. UI.line("!", 36))
         UI.resetColor()
         print("")
         print(message)
         print("")
-        print("Press any key or click to exit...")
+        print("  Press any key or click to exit...")
         os.pullEvent()
     end
     
@@ -411,82 +456,48 @@ local function createInstaller()
         local success = 0
         local failed = 0
         
-        -- Show installation on monitor
-        UI.usePrimary()
-        UI.header("Installing " .. pkg.name)
-        print("")
-        
-        -- If we have a monitor, show status on terminal too
-        if UI.monitorDisplay then
-            UI.useTerminal()
-            term.clear()
-            term.setCursorPos(1, 1)
-            term.setTextColor(colors.yellow)
-            print("Installation in progress...")
-            print("Check monitor for details")
-            term.setTextColor(colors.white)
-            UI.usePrimary()
-        end
-        
         for i, filePath in ipairs(files) do
+            -- Show progress screen with package name
+            UI.usePrimary()
+            UI.installProgress(pkg.name, i, total, filePath)
+            
             local url = BASE_URL .. filePath
             local targetPath = filePath
-            
-            UI.usePrimary()
-            print("[" .. i .. "/" .. total .. "] " .. filePath)
             
             local data, err = Installer.fetch(url)
             if data then
                 if Installer.writeFile(targetPath, data) then
-                    UI.setColor(colors.lime)
-                    print("  [OK] Success")
-                    UI.resetColor()
                     success = success + 1
                 else
-                    UI.setColor(colors.red)
-                    print("  [FAIL] Write failed")
-                    UI.resetColor()
                     failed = failed + 1
                 end
             else
-                UI.setColor(colors.red)
-                print("  [FAIL] " .. err)
-                UI.resetColor()
                 failed = failed + 1
             end
             
             -- Update terminal status
             if UI.monitorDisplay then
                 UI.useTerminal()
-                term.setCursorPos(1, 3)
-                term.clearLine()
-                print("Progress: " .. i .. "/" .. total .. " files")
+                term.clear()
+                term.setCursorPos(1, 1)
+                term.setTextColor(colors.yellow)
+                print("Installing " .. pkg.name .. "...")
+                print("")
+                print("Progress: " .. i .. "/" .. total)
+                term.setTextColor(colors.white)
                 UI.usePrimary()
             end
         end
         
+        -- Show completion screen
         UI.usePrimary()
-        print("")
-        print("Installation Summary:")
-        UI.setColor(colors.lime)
-        print("Success: " .. success)
-        UI.resetColor()
-        if failed > 0 then
-            UI.setColor(colors.red)
-            print("Failed:  " .. failed)
-            UI.resetColor()
-        end
+        UI.installComplete(pkg.name, success, failed)
         
-        -- Clear terminal status
+        -- Clear terminal
         if UI.monitorDisplay then
             UI.useTerminal()
             term.clear()
             term.setCursorPos(1, 1)
-            term.setTextColor(colors.lime)
-            print("Installation complete!")
-            print("Check monitor for details")
-            term.setTextColor(colors.white)
-            UI.usePrimary()
         end
         
         return failed == 0
