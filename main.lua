@@ -6,7 +6,6 @@ local Device = require("utils.Device")
 local rend = Renderer.initialize()
 
 local running = true
-local showMessage = ""
 
 while running do
     -- Clear screen with black background
@@ -35,10 +34,6 @@ while running do
     rend:drawFilledRect(1, rend.height, rend.width, 1, colors.gray)
     rend:write(2, rend.height, "Click anywhere or press any key to exit...", colors.white, colors.gray)
 
-    if showMessage ~= "" then
-        rend:printAt(3, 17, showMessage, colors.lime, colors.black)
-    end
-
     -- Render everything to screen
     rend:render()
 
@@ -46,10 +41,8 @@ while running do
     local event, a, b, c = os.pullEvent()
     
     if event == "key" then
-        showMessage = "Key pressed: " .. keys.getName(a)
         running = false
     elseif event == "mouse_click" then
-        showMessage = "Mouse clicked at: " .. b .. ", " .. c
         running = false
     end
 end
