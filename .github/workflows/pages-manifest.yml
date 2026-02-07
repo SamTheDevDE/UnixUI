@@ -31,12 +31,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p site/files
+          mkdir -p site
           
-          # Copy all files from UnixUI to site
+          # Copy all files from UnixUI to site (directly, not in files/ subdirectory)
           if [ -d UnixUI/installer ]; then
             find UnixUI/installer -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -44,7 +44,7 @@ jobs:
           
           if [ -d UnixUI/core ]; then
             find UnixUI/core -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -52,7 +52,7 @@ jobs:
           
           if [ -d UnixUI/graphics ]; then
             find UnixUI/graphics -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -60,7 +60,7 @@ jobs:
           
           if [ -d UnixUI/components ]; then
             find UnixUI/components -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -68,7 +68,7 @@ jobs:
           
           if [ -d UnixUI/utils ]; then
             find UnixUI/utils -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -76,7 +76,7 @@ jobs:
           
           if [ -d UnixUI/demos ]; then
             find UnixUI/demos -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -84,7 +84,7 @@ jobs:
           
           if [ -d UnixUI/docs ]; then
             find UnixUI/docs -type f -print0 | while IFS= read -r -d '' f; do
-              dest="site/files/${f#UnixUI/}"
+              dest="site/${f#UnixUI/}"
               mkdir -p "$(dirname "$dest")"
               cp "$f" "$dest"
             done
@@ -92,12 +92,12 @@ jobs:
           
           # Copy init.lua from UnixUI root
           if [ -f UnixUI/init.lua ]; then
-            cp UnixUI/init.lua site/files/init.lua
+            cp UnixUI/init.lua site/init.lua
           fi
           
           # Copy install.lua from project root
           if [ -f install.lua ]; then
-            cp install.lua site/files/install.lua
+            cp install.lua site/install.lua
           fi
           
           owner="${GITHUB_REPOSITORY%%/*}"
@@ -230,8 +230,10 @@ jobs:
           </ul>
           <h2>Installation</h2>
           <p>Download the installer and run it in ComputerCraft:</p>
-          <pre>wget https://samthedevde.github.io/UnixUI/install.lua install.lua
-
+          <pre>wget https://unixui.samthedev.de/install.lua install.lua
+          lua install.lua</pre>
+          HTML
+          
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

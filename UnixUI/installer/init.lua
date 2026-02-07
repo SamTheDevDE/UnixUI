@@ -273,7 +273,45 @@ local function createInstaller()
             return
         end
         
-        -- Create menu options
+        -- Check if this is first-time installation (no .temp directory)
+        local isFirstRun = not fs.exists(TEMP_DIR)
+        
+        if isFirstRun then
+            -- Offer quick installation on first run
+            UI.clearScreen()
+            UI.setColor(colors.yellow)
+            print("Welcome to UnixUI!")
+            UI.resetColor()
+            print("")
+            print("This appears to be your first installation.")
+            print("")
+            print("You can:")
+            print("1. Install Full (everything)")
+            print("2. Install Core (rendering system only)")
+            print("3. Choose packages manually")
+            print("")
+            
+            local quickOptions = {
+                {key = "full", text = "Full Installation", desc = "Everything"},
+                {key = "core", text = "Core Only", desc = "Just rendering system"},
+                {key = "manual", text = "Choose Packages", desc = "Custom selection"},
+            }
+            
+            local selected = UI.menu("Quick Install", quickOptions)
+            
+            if not selected or selected.key == "manual" then
+                -- Fall through to manual selection below
+            else
+                -- Auto-install the selected quick option
+                Installer.installPackage(manifest, selected.key)
+                print("")
+                print("Press any key to exit...")
+                os.pullEvent("key")
+                return
+            end
+        end
+        
+        -- Create menu options for manual selection
         local packageNames = Installer.getPackageNames(manifest)
         local options = {}
         
