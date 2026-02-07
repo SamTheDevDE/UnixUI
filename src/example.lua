@@ -1,53 +1,48 @@
 -- Example usage of UnixUI Graphics Framework
-local Renderer = require("src.renderer")
+local Renderer = require("core.Renderer")
+local Button = require("components.Button")
+local Panel = require("components.Panel")
 
--- Create a simple menu
+-- Create a simple menu with buttons
 local function drawMenu()
-    local rend = Renderer.new()
+    local rend = Renderer.initialize()
     rend:clear(colors.black)
     
-    -- Title
-    rend:setBackgroundColor(colors.blue)
-    rend:setTextColor(colors.white)
-    rend:drawFilledRect(1, 1, rend.width, 3, colors.blue)
-    rend:printAt(math.floor(rend.width/2) - 5, 2, "Main Menu")
+    -- Title panel
+    local titlePanel = Panel.new(1, 1, rend.width, 3, "Main Menu")
+    titlePanel:setColors(colors.black, colors.white, colors.blue, colors.white)
+    titlePanel:draw(rend)
     
-    -- Menu options
+    -- Draw menu options
     local options = {"Start Game", "Settings", "Exit"}
     local startY = 6
     
     for i, option in ipairs(options) do
-        rend:setBackgroundColor(colors.gray)
-        rend:setTextColor(colors.white)
         rend:drawFilledRect(5, startY + (i-1)*3, 30, 2, colors.gray)
-        rend:printAt(7, startY + (i-1)*3 + 1, option)
+        rend:printAt(7, startY + (i-1)*3 + 1, option, colors.white, colors.gray)
     end
     
     rend:render()
 end
 
--- Create a progress bar animation
+-- Progress bar animation
 local function progressBarDemo()
-    local rend = Renderer.new()
+    local rend = Renderer.initialize()
     
     for progress = 0, 100, 5 do
         rend:clear(colors.black)
         
-        rend:setTextColor(colors.white)
-        rend:printAt(2, 5, "Loading...")
+        rend:printAt(2, 5, "Loading...", colors.white, colors.black)
         
         -- Progress bar background
-        rend:setBackgroundColor(colors.gray)
         rend:drawFilledRect(2, 7, 40, 3, colors.gray)
         
         -- Progress bar fill
         local fillWidth = math.floor(38 * progress / 100)
-        rend:setBackgroundColor(colors.lime)
         rend:drawFilledRect(3, 8, fillWidth, 1, colors.lime)
         
         -- Percentage text
-        rend:setBackgroundColor(colors.black)
-        rend:printAt(2, 11, progress .. "%")
+        rend:printAt(2, 11, progress .. "%", colors.white, colors.black)
         
         rend:render()
         sleep(0.1)
@@ -56,12 +51,12 @@ local function progressBarDemo()
     sleep(1)
 end
 
--- Create a simple drawing
+-- Draw pattern with shapes
 local function drawPattern()
-    local rend = Renderer.new()
+    local rend = Renderer.initialize()
     rend:clear(colors.black)
     
-    -- Draw a pattern of colored boxes
+    -- Draw colored boxes
     local colorList = {colors.red, colors.orange, colors.yellow, colors.lime, colors.cyan, colors.blue}
     
     for i = 1, 6 do
@@ -72,21 +67,49 @@ local function drawPattern()
     rend:drawLine(1, 1, rend.width, rend.height, colors.white, "*")
     rend:drawLine(1, rend.height, rend.width, 1, colors.white, "*")
     
-    rend:setBackgroundColor(colors.black)
-    rend:setTextColor(colors.white)
-    rend:printAt(2, rend.height - 1, "Press any key...")
+    rend:printAt(2, rend.height - 1, "Press any key...", colors.white, colors.black)
     
     rend:render()
     os.pullEvent("key")
 end
 
--- Run demos
+-- Button demo
+local function buttonDemo()
+    local rend = Renderer.initialize()
+    rend:clear(colors.black)
+    
+    -- Create buttons
+    local btn1 = Button.new(5, 5, 15, 3, "Button 1")
+    local btn2 = Button.new(5, 9, 15, 3, "Button 2")
+    local btn3 = Button.new(5, 13, 15, 3, "Button 3")
+    
+    -- Set initial focus
+    btn1:setFocused(true)
+    
+    -- Draw title
+    rend:printAt(2, 1, "Button Demo (Use arrow keys)", colors.white, colors.black)
+    
+    -- Draw buttons
+    btn1:draw(rend)
+    btn2:draw(rend)
+    btn3:draw(rend)
+    
+    rend:printAt(2, rend.height, "Press any key to exit...", colors.white, colors.black)
+    rend:render()
+    
+    os.pullEvent("key")
+end
+
+-- Main menu
+term.clear()
+term.setCursorPos(1, 1)
 print("UnixUI Graphics Framework Examples")
 print("1. Menu Demo")
 print("2. Progress Bar Demo")
 print("3. Pattern Demo")
+print("4. Button Demo")
 print("")
-write("Select demo (1-3): ")
+write("Select demo (1-4): ")
 
 local choice = read()
 
@@ -97,6 +120,8 @@ elseif choice == "2" then
     progressBarDemo()
 elseif choice == "3" then
     drawPattern()
+elseif choice == "4" then
+    buttonDemo()
 else
     print("Invalid choice")
 end
