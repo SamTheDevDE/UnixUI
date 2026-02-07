@@ -176,6 +176,90 @@ local function createInstaller()
         return true
     end
     
+    -- Simple JSON parse (for manifest only)
+    local function parseJSON(json)
+        local pos = 1
+        local function skip()
+            while pos <= #json and json:sub(pos, pos):match("[%s\n\r\t]") do
+                pos = pos + 1
+            end
+        end
+        local function parseValue()
+            skip()
+            local ch = json:sub(pos, pos)
+            if ch == "{" then
+                pos = pos + 1
+                local t = {}
+                skip()
+                if json:sub(pos, pos) ~= "}" then
+                    while true do
+                        skip()
+                        -- Parse key
+                        if json:sub(pos, pos) ~= '"' then return nil end
+                        pos = pos + 1
+                        local keyStart = pos
+                        while pos <= #json and json:sub(pos, pos) ~= '"' do pos = pos + 1 end
+                        local key = json:sub(keyStart, pos - 1)
+                        pos = pos + 1
+                        skip()
+                        if json:sub(pos, pos) ~= ":" then return nil end
+                        pos = pos + 1
+                        local val = parseValue()
+                        if not val then return nil end
+                        t[key] = val
+                        skip()
+                        local ch = json:sub(pos, pos)
+                        if ch == "}" then break end
+                        if ch ~= "," then return nil end
+                        pos = pos + 1
+                    end
+                end
+                pos = pos + 1
+                return t
+            elseif ch == "[" then
+                pos = pos + 1
+                local t = {}
+                skip()
+                if json:sub(pos, pos) ~= "]" then
+                    while true do
+                        local val = parseValue()
+                        if not val then return nil end
+                        table.insert(t, val)
+                        skip()
+                        local ch = json:sub(pos, pos)
+                        if ch == "]" then break end
+                        if ch ~= "," then return nil end
+                        pos = pos + 1
+                    end
+                end
+                pos = pos + 1
+                return t
+            elseif ch == '"' then
+                pos = pos + 1
+                local start = pos
+                while pos <= #json and json:sub(pos, pos) ~= '"' do pos = pos + 1 end
+                local str = json:sub(start, pos - 1)
+                pos = pos + 1
+                return str
+            elseif json:sub(pos, pos + 3) == "true" then
+                pos = pos + 4
+                return true
+            elseif json:sub(pos, pos + 4) == "false" then
+                pos = pos + 5
+                return false
+            elseif json:sub(pos, pos + 3) == "null" then
+                pos = pos + 4
+                return nil
+            else
+                local start = pos
+                while pos <= #json and json:sub(pos, pos):match("[%d%.%-+eE]") do pos = pos + 1 end
+                local numStr = json:sub(start, pos - 1)
+                return tonumber(numStr)
+            end
+        end
+        return parseValue()
+    end
+    
     -- Load manifest
     function Installer.loadManifest()
         UI.header("UnixUI Installer", "Loading manifest...")
@@ -191,29 +275,13 @@ local function createInstaller()
         
         print("✓ Downloaded " .. #manifestData .. " bytes")
         
-        -- Check if textutils.jsonDecode exists
-        if not textutils or not textutils.jsonDecode then
-            UI.error("ERROR", "textutils.jsonDecode not available!\n\nThis may indicate a corrupted ComputerCraft installation")
-            return nil
-        end
-        
-        local ok, result = pcall(textutils.jsonDecode, manifestData)
-        if not ok then
-            print("✗ Failed to parse JSON")
+        local ok, result = pcall(parseJSON, manifestData)
+        if not ok or not result then
+            print("✗ Failed to parse manifest")
             print("Error: " .. tostring(result))
-            if #manifestData < 500 then
-                print("Data: " .. manifestData)
-            else
-                print("Data (first 200 chars): " .. manifestData:sub(1, 200) .. "...")
-            end
             print("")
             sleep(2)
-            UI.error("ERROR", "Invalid manifest JSON!\n\nError: " .. tostring(result))
-            return nil
-        end
-        
-        if not result or type(result) ~= "table" then
-            UI.error("ERROR", "Manifest is not valid JSON!")
+            UI.error("ERROR", "Invalid manifest format!")
             return nil
         end
         
