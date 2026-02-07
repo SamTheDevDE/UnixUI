@@ -170,6 +170,8 @@ local function createInstaller()
     function Installer.loadManifest()
         UI.header("UnixUI Installer", "Loading manifest...")
         print("Fetching manifest from server...")
+        print("URL: " .. MANIFEST_URL)
+        print("")
         
         local manifestData, err = Installer.fetch(MANIFEST_URL)
         if not manifestData then
@@ -177,15 +179,29 @@ local function createInstaller()
             return nil
         end
         
+        print("✓ Downloaded " .. #manifestData .. " bytes")
+        
         local ok, result = pcall(textutils.jsonDecode, manifestData)
         if not ok then
-            UI.error("ERROR", "Invalid manifest JSON!")
+            print("✗ Failed to parse JSON")
+            print("Error: " .. tostring(result))
+            print("")
+            print("Raw data preview:")
+            print(manifestData:sub(1, 200))
+            print("")
+            UI.error("ERROR", "Invalid manifest JSON!\n\nError: " .. tostring(result))
+            return nil
+        end
+        
+        if not result or not result.packages then
+            UI.error("ERROR", "Manifest missing 'packages' field!")
             return nil
         end
         
         UI.setColor(colors.lime)
         print("✓ Manifest loaded successfully")
         print("  Version: " .. (result.version or "unknown"))
+        print("  Packages: " .. (result.packages and "yes" or "no"))
         UI.resetColor()
         sleep(1)
         
