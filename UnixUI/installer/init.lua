@@ -532,9 +532,10 @@ local function createInstaller()
         local isFirstRun = not fs.exists(TEMP_DIR .. "/installed")
         
         if isFirstRun then
-            -- Auto-install full package on first run
+            -- Auto-install installer package on first run
             UI.header("UnixUI Installer", "First run detected")
-            print("Installing UnixUI Framework...")
+            print("Installing installer package...")
+            print("This will cache the installer locally")
             print("")
             
             -- Mark as installed
@@ -544,11 +545,14 @@ local function createInstaller()
                 marker.close()
             end
             
-            Installer.installPackage(manifest, "full")
+            Installer.installPackage(manifest, "installer")
             
             print("")
-            print("Installation complete! Press any key to exit...")
-            os.pullEvent("key")
+            print("Installer cached successfully!")
+            print("Run the installer again to install packages")
+            print("")
+            print("Press any key to exit...")
+            os.pullEvent()
             return
         end
         
