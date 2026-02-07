@@ -1,47 +1,79 @@
-# LTCCT-Template
+# UnixUI
+A simple graphics framework for ComputerCraft: Tweaked
 
-A Lua template project for ComputerCraft: Tweaked in Minecraft.
+## Features
+- **Buffered Rendering** - Efficient screen updates using double buffering
+- **Drawing Primitives** - Rectangles, lines, and text rendering
+- **Color Support** - Full CC:Tweaked color palette support
+- **Monitor Support** - Works with both terminals and monitors
+- **Simple API** - Easy to learn and use
 
-## Description
+## Quick Start
 
-This project provides a template for developing ComputerCraft programs using Lua.
+```lua
+local Renderer = require("renderer")
 
-## Structure
+-- Create a new renderer
+local rend = Renderer.new()
 
+-- Clear the screen
+rend:clear(colors.black)
+
+-- Draw a rectangle
+rend:setTextColor(colors.red)
+rend:drawRect(5, 5, 20, 10, colors.red)
+
+-- Draw filled rectangle
+rend:drawFilledRect(10, 8, 15, 5, colors.blue)
+
+-- Draw text
+rend:setTextColor(colors.white)
+rend:setBackgroundColor(colors.black)
+rend:printAt(3, 3, "Hello World!")
+
+-- Render to screen
+rend:render()
 ```
-src/          - Source code files
+
+## API Reference
+
+### Creating a Renderer
+- `Renderer.new(output)` - Create a new renderer (output defaults to term)
+- `Renderer.initialize()` - Auto-detect monitor or use terminal
+
+### Drawing Methods
+- `clear(color)` - Clear screen with color
+- `drawRect(x, y, width, height, color)` - Draw rectangle outline
+- `drawFilledRect(x, y, width, height, color)` - Draw filled rectangle
+- `drawLine(x1, y1, x2, y2, color, char)` - Draw a line
+- `printAt(x, y, text)` - Print text at position
+- `write(text)` - Write text at cursor position
+- `printLn(text)` - Print with newline
+
+### Configuration
+- `setTextColor(color)` - Set text color
+- `setBackgroundColor(color)` - Set background color
+- `setCursorPos(x, y)` - Set cursor position
+- `render()` - Draw buffer to screen
+
+### Properties
+- `width` - Screen width
+- `height` - Screen height
+- `output` - Output device (terminal/monitor)
+
+## Examples
+
+Run the demo:
+```
+cd unixui
+lua main.lua
 ```
 
-## Getting Started
-
-1. Clone this repository
-2. Add your Lua scripts to the `src/` directory
-3. Deploy to your ComputerCraft computer
-
-## GitHub Pages Manifest
-
-This repo publishes a site with a `manifest.json` listing all files under `src/`, along with sizes and SHA-256 checksums. The site serves the files under `files/` keeping their repo-relative paths.
-
-- Pages URL: `https://SamTheDevDE.github.io/LTCCT-Template`
-- Manifest URL: `https://SamTheDevDE.github.io/LTCCT-Template/manifest.json`
-
-### ComputerCraft Installer
-
-Use `src/install.lua` on a ComputerCraft: Tweaked computer (HTTP must be enabled). It fetches the manifest and downloads files locally preserving paths.
-
-Example (paste into CC shell):
-
+Run interactive examples:
 ```
-wget https://SamTheDevDE.github.io/LTCCT-Template/files/src/install.lua install.lua
-lua install.lua
+cd unixui
+lua example.lua
 ```
-
-Adjust `TARGET_DIR` in `src/install.lua` to change the install location.
-
-## Requirements
-
-- Minecraft with ComputerCraft: Tweaked mod
 
 ## License
-
-[Add your license here]
+Feel free to use and modify as you like.
