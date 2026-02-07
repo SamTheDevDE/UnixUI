@@ -273,45 +273,32 @@ local function createInstaller()
             return
         end
         
-        -- Check if this is first-time installation (no .temp directory)
-        local isFirstRun = not fs.exists(TEMP_DIR)
+        -- Check if this is first-time installation (no .temp directory existed before)
+        -- We create .temp in main(), so just check if the marker file exists
+        local isFirstRun = not fs.exists(TEMP_DIR .. "/installed")
         
         if isFirstRun then
-            -- Offer quick installation on first run
-            UI.clearScreen()
-            UI.setColor(colors.yellow)
-            print("Welcome to UnixUI!")
-            UI.resetColor()
-            print("")
-            print("This appears to be your first installation.")
-            print("")
-            print("You can:")
-            print("1. Install Full (everything)")
-            print("2. Install Core (rendering system only)")
-            print("3. Choose packages manually")
+            -- Auto-install full package on first run
+            UI.header("UnixUI Installer", "First run detected")
+            print("Installing UnixUI Framework...")
             print("")
             
-            local quickOptions = {
-                {key = "full", text = "Full Installation", desc = "Everything"},
-                {key = "core", text = "Core Only", desc = "Just rendering system"},
-                {key = "manual", text = "Choose Packages", desc = "Custom selection"},
-            }
-            
-            local selected = UI.menu("Quick Install", quickOptions)
-            
-            if not selected or selected.key == "manual" then
-                -- Fall through to manual selection below
-            else
-                -- Auto-install the selected quick option
-                Installer.installPackage(manifest, selected.key)
-                print("")
-                print("Press any key to exit...")
-                os.pullEvent("key")
-                return
+            -- Mark as installed
+            local marker = fs.open(TEMP_DIR .. "/installed", "w")
+            if marker then
+                marker.write("true")
+                marker.close()
             end
+            
+            Installer.installPackage(manifest, "full")
+            
+            print("")
+            print("Installation complete! Press any key to exit...")
+            os.pullEvent("key")
+            return
         end
         
-        -- Create menu options for manual selection
+        -- Create menu options for returning users
         local packageNames = Installer.getPackageNames(manifest)
         local options = {}
         
@@ -353,6 +340,11 @@ end
 
 -- Main entry point
 local function main()
+    -- Ensure .temp directory exists
+    if not fs.exists(TEMP_DIR) then
+        fs.makeDir(TEMP_DIR)
+    end
+    
     -- Try to load cached installer first
     local installer = loadCachedInstaller()
     
