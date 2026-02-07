@@ -6,19 +6,30 @@ local INSTALLER_URL = BASE_URL .. "installer/init.lua"
 
 -- Check if running locally (UnixUI folder exists) or remotely (downloaded via wget)
 local function runInstaller()
-    if fs.exists("UnixUI/installer/init.lua") then
-        -- Running locally - load from file
+    -- Priority 1: Check if installer package is installed locally
+    if fs.exists("installer/init.lua") then
+        -- Running from installed installer package
+        dofile("installer/init.lua")
+    -- Priority 2: Check if running from development UnixUI folder
+    elseif fs.exists("UnixUI/installer/init.lua") then
+        -- Running from dev environment
         dofile("UnixUI/installer/init.lua")
     else
-        -- Running remotely - download from URL
+        -- Priority 3: Download from URL
         if not http then
             term.clear()
             term.setCursorPos(1, 1)
             term.setTextColor(colors.red)
             print("ERROR: HTTP API not available")
+            print("")
+            print("Please enable HTTP in ComputerCraft config")
             term.setTextColor(colors.white)
             return
         end
+        
+        term.clear()
+        term.setCursorPos(1, 1)
+        print("Downloading installer...")
         
         local res = http.get(INSTALLER_URL)
         if not res then
@@ -51,11 +62,13 @@ local function runInstaller()
             print("ERROR: Downloaded HTML instead of Lua")
             print("The custom domain may not be set up yet")
             print("")
-            print("Try installing from dev branch:")
+            print("Try installing from GitHub Pages:")
             print("wget https://samthedevde.github.io/UnixUI/install.lua install.lua")
             term.setTextColor(colors.white)
             return
         end
+        
+        print("Running installer...")
         
         -- Execute the installer code with proper environment
         local fn, err = load(code, "installer")
