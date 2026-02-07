@@ -122,20 +122,20 @@ local function createInstaller()
             UI.header(title)
             
             local optionLines = {}
-            local lineNum = 6
+            local lineNum = 7  -- First option starts after header (which ends at line 6)
             
             for i, opt in ipairs(options) do
                 local isSelected = (i == selected)
+                
+                optionLines[lineNum] = i  -- Record which option is at this line
                 
                 if isSelected then
                     UI.setColor(colors.black)
                     term.setBackgroundColor(colors.cyan)
                     print("  > " .. opt.text)
-                    optionLines[lineNum] = i
                 else
                     UI.setColor(colors.white)
                     print("    " .. opt.text)
-                    optionLines[lineNum] = i
                 end
                 
                 lineNum = lineNum + 1
